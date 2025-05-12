@@ -20,7 +20,5 @@ services:
 
 volumes:
   pgdata:
-  grafana_storage:
-  prometheus-data:
 networks:
   my_network:

@@ -13,4 +13,10 @@ tasks:
     aliases:
       - rd
     desc: Run the application in development mode
-    cmd: go run main.go
+    cmd: docker compose up -d && go run main.go
+
+  run-down:
+    aliases:
+      - rd
+    desc: Run the application in development mode
+    cmd: docker compose down
