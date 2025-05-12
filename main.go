@@ -10,27 +10,73 @@ import (
 	"otel/utils"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riandyrn/otelchi"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
+var db *pgxpool.Pool
+
 const (
-	addr        = ":8091"
+	addr        = ":8080"
 	serviceName = "back-svc"
 )
 
-func NewPool() *pgxpool.Pool {
-	connStr := getConnStr()
+func main() {
 	ctx := context.Background()
 
-	db, err := pgxpool.New(ctx, connStr)
+	// トレーサーとトレーサープロバイダ初期化
+	tracer, tp, err := utils.NewTracer(serviceName)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		log.Fatalf("Tracer init failed: %v", err)
 	}
+	defer func() {
+		_ = tp.Shutdown(ctx)
+	}()
 
-	return db
+	// DB接続
+	db, err = initDB(ctx, tp)
+	if err != nil {
+		log.Fatalf("DB init failed: %v", err)
+	}
+	defer db.Close()
+
+	// ルーター設定
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		name := generateName(ctx, tracer)
+
+		var result int
+		err := db.QueryRow(ctx, "SELECT 1").Scan(&result)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, "Name: %s, DB result: %d", name, result)
+	})
+
+	log.Printf("Starting server on %s...\n", addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func initDB(ctx context.Context, tp *sdktrace.TracerProvider) (*pgxpool.Pool, error) {
+	connStr := getConnStr()
+	cfg, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		return nil, err
+	}
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp))
+	return pgxpool.NewWithConfig(ctx, cfg)
 }
 
 func getConnStr() string {
@@ -39,46 +85,14 @@ func getConnStr() string {
 	host := getEnv("DB_HOST", "localhost")
 	port := getEnv("DB_PORT", "5432")
 	dbname := getEnv("DB_NAME", "postgres")
-
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, pass, host, port, dbname)
 }
 
 func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
+	if value, ok := os.LookupEnv(key); ok {
 		return value
 	}
 	return fallback
-}
-
-func main() {
-	db := NewPool()
-	defer db.Close()
-	// initialize tracer
-	tracer, err := utils.NewTracer(serviceName)
-	if err != nil {
-		log.Fatalf("unable to initialize tracer due: %v", err)
-	}
-
-	r := chi.NewRouter()
-	r.Use(
-		otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)),
-	)
-
-	// /health エンドポイントで SELECT 1 を実行
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(generateName(r.Context(), tracer)))
-		var result int
-		err := db.QueryRow(context.Background(), "SELECT 1").Scan(&result)
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintf(w, "DB result: %d", result)
-	})
-
-	// サーバー起動
-	log.Println("Starting server on :8080")
-	http.ListenAndServe(":8080", r)
 }
 
 func generateName(ctx context.Context, tracer trace.Tracer) string {
@@ -86,5 +100,5 @@ func generateName(ctx context.Context, tracer trace.Tracer) string {
 	defer span.End()
 
 	rndNum := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000)
-	return fmt.Sprintf("user_%v", rndNum)
+	return fmt.Sprintf("user_%d\n", rndNum)
 }
