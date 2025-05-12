@@ -17,6 +17,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0-arm64
+    command:
+      - "--config"
+      - /etc/otel/config.yml
+    ports:
+      - 4317:4317
+    volumes:
+      - ./config.yml:/etc/otel/config.yml
+  jaeger:
+    image: jaegertracing/all-in-one:1.69.0
+    expose:
+      - 14250
+    ports:
+      - 16686:16686
 
 volumes:
   pgdata:
