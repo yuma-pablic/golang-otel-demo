@@ -2,7 +2,10 @@ module otel
 
 go 1.24.2
 
-require github.com/jackc/pgx/v5 v5.7.4
+require (
+	github.com/go-chi/chi v1.5.5
+	github.com/jackc/pgx/v5 v5.7.4
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
