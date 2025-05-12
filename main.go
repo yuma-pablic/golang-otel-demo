@@ -4,11 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"otel/utils"
+	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riandyrn/otelchi"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	addr        = ":8091"
+	serviceName = "back-svc"
 )
 
 func NewPool() *pgxpool.Pool {
@@ -43,11 +53,20 @@ func getEnv(key, fallback string) string {
 func main() {
 	db := NewPool()
 	defer db.Close()
+	// initialize tracer
+	tracer, err := utils.NewTracer(serviceName)
+	if err != nil {
+		log.Fatalf("unable to initialize tracer due: %v", err)
+	}
 
 	r := chi.NewRouter()
+	r.Use(
+		otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)),
+	)
 
-	// /healthz エンドポイントで SELECT 1 を実行
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	// /health エンドポイントで SELECT 1 を実行
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(generateName(r.Context(), tracer)))
 		var result int
 		err := db.QueryRow(context.Background(), "SELECT 1").Scan(&result)
 		if err != nil {
@@ -60,4 +79,12 @@ func main() {
 	// サーバー起動
 	log.Println("Starting server on :8080")
 	http.ListenAndServe(":8080", r)
+}
+
+func generateName(ctx context.Context, tracer trace.Tracer) string {
+	_, span := tracer.Start(ctx, "generateName")
+	defer span.End()
+
+	rndNum := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000)
+	return fmt.Sprintf("user_%v", rndNum)
 }
