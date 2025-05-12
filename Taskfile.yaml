@@ -1,0 +1,16 @@
+version: "3"
+
+silent: true
+
+tasks:
+  default:
+    aliases:
+      - list
+    desc: List all tasks
+    cmd: task -l
+
+  run-dev:
+    aliases:
+      - rd
+    desc: Run the application in development mode
+    cmd: go run main.go
