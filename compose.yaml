@@ -19,28 +19,61 @@ services:
       retries: 5
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0-arm64
+    container_name: otel-collector
     command:
       - "--config"
       - /etc/otel/config.yml
-    ports:
-      - 4317:4317
-      - 4318:4318
     volumes:
       - ./config.yml:/etc/otel/config.yml
-    depends_on:
-       - jaeger
-  jaeger:
-    image: jaegertracing/all-in-one:1.69.0
     ports:
-      - "16686:16686"
-    expose:
-      - 4317
-      - 4318
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - my_network
+
+  tempo:
+    image: grafana/tempo:2.1.1
+    platform: linux/arm64
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./o11y/tempo/tempo.yaml:/etc/tempo/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "9096:9096"
+      - "3201:3201"
+    networks:
+      - my_network
+  grafana:
+    image: grafana/grafana-enterprise:11.6.0
+    platform: linux/arm64
+    container_name: grafana
+    ports:
+      - 3000:3000
     environment:
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
-      - COLLECTOR_OTLP_ENABLED=true
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: db:5432
+      GF_DATABASE_NAME: postgres
+      GF_DATABASE_USER: admin
+      GF_DATABASE_PASSWORD: admin
+      GF_DATABASE_SSL_MODE: disable
+      GF_INSTALL_PLUGINS: https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app
+    restart: unless-stopped
+    volumes:
+      - 'grafana_storage:/var/lib/grafana'
+      - './o11y/grafana/datasources:/etc/grafana/provisioning/datasources'
+      # - './o11y/grafana/dashboards:/var/lib/grafana/dashboards'
+      # - './o11y/grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml'
+    networks:
+      - my_network
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:
+  grafana_storage:
 networks:
   my_network:

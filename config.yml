@@ -11,7 +11,7 @@ processors:
 
 exporters:
   otlp:
-    endpoint: jaeger:4317
+    endpoint: tempo:9096
     tls:
       insecure: true
 
