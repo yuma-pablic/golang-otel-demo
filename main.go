@@ -23,7 +23,7 @@ var db *pgxpool.Pool
 
 const (
 	addr        = ":8080"
-	serviceName = "back-svc"
+	serviceName = "main-api"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func main() {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		name := generateName(ctx, tracer)
+		name := generateTrace(ctx, tracer, r.Method, r.URL.Path)
 
 		var result int
 		err := db.QueryRow(ctx, "SELECT 1").Scan(&result)
@@ -95,8 +95,8 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func generateName(ctx context.Context, tracer trace.Tracer) string {
-	_, span := tracer.Start(ctx, "generateName")
+func generateTrace(ctx context.Context, tracer trace.Tracer, method string, path string) string {
+	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", method, path))
 	defer span.End()
 
 	rndNum := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000)
