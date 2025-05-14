@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"otel/utils"
 
 	middlewares "otel/middlewares"
+	"otel/utils"
 
 	"github.com/exaring/otelpgx"
 	"github.com/go-chi/chi/middleware"
