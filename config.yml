@@ -6,17 +6,13 @@ receivers:
       http:
        endpoint: "0.0.0.0:4318"
   filelog:
-    include: [./logs/app.log]
+    include: [/logs/app.log]
     start_at: beginning
-    operators:
-      - type: json_parser
-        id: parse_json
-        parse_from: body
-    attributes:
-      job: main-api
+
 
 processors:
   batch:
+  resource:
 
 exporters:
   otlp:
@@ -25,8 +21,6 @@ exporters:
       insecure: true
   otlphttp/logs:
     endpoint: "http://loki:3100/otlp"
-    tls:
-      insecure: true
 
 extensions:
   health_check:
@@ -40,6 +34,6 @@ service:
       processors: [batch]
       exporters: [otlp]
     logs:
-      receivers: [otlp]
-      processors: [batch]
+      receivers: [filelog]
+      processors: [resource,batch]
       exporters: [otlphttp/logs]
