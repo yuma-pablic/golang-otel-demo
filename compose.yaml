@@ -17,20 +17,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.123.0-arm64
-    container_name: otel-collector
-    command:
-      - "--config"
-      - /etc/otel/config.yml
-    volumes:
-      - ./config.yml:/etc/otel/config.yml
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-    networks:
-      - my_network
-
   tempo:
     image: grafana/tempo:2.1.1
     platform: linux/arm64
@@ -42,6 +28,22 @@ services:
       - "3200:3200"
       - "9096:9096"
       - "3201:3201"
+    networks:
+      - my_network
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0-arm64
+    platform: linux/arm64
+    container_name: otel-collector
+    command:
+      - "--config"
+      - /etc/otel/config.yml
+    volumes:
+      - ./config.yml:/etc/otel/config.yml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - tempo
     networks:
       - my_network
   grafana:
