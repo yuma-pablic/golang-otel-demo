@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -25,12 +26,14 @@ const (
 	serviceName = "main-api"
 )
 
-type contextKey string
-
-const TraceIDKey = contextKey("traceID")
-
 func main() {
 	ctx := context.Background()
+
+	logger, err := utils.NewLogger(serviceName)
+	if err != nil {
+		panic("Logger init failed: " + err.Error())
+	}
+	logger.Info("Logger initialized", slog.String("service", serviceName))
 
 	// トレーサーとトレーサープロバイダ初期化
 	tracer, tp, err := utils.NewTracer(serviceName)
@@ -63,7 +66,7 @@ func main() {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintf(w, "Name: %s, DB result: %d", "wa", result)
+		slog.InfoContext(ctx, "health_check success")
 	})
 
 	log.Printf("Starting server on %s...\n", addr)

@@ -38,6 +38,7 @@ services:
       - "--config"
       - /etc/otel/config.yml
     volumes:
+      - ./logs:/logs
       - ./config.yml:/etc/otel/config.yml
     ports:
       - "4317:4317"
