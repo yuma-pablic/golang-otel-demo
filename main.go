@@ -26,6 +26,10 @@ const (
 	serviceName = "main-api"
 )
 
+type contextKey string
+
+const TraceIDKey = contextKey("traceID")
+
 func main() {
 	ctx := context.Background()
 
@@ -49,10 +53,16 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			traceID := GenerateTraceID(r.Context(), tracer, r.Method, r.URL.Path)
+			ctx := context.WithValue(r.Context(), TraceIDKey, traceID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		name := generateTrace(ctx, tracer, r.Method, r.URL.Path)
 
 		var result int
 		err := db.QueryRow(ctx, "SELECT 1").Scan(&result)
@@ -60,7 +70,7 @@ func main() {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintf(w, "Name: %s, DB result: %d", name, result)
+		fmt.Fprintf(w, "Name: %s, DB result: %d", "wa", result)
 	})
 
 	log.Printf("Starting server on %s...\n", addr)
@@ -95,10 +105,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func generateTrace(ctx context.Context, tracer trace.Tracer, method string, path string) string {
+func GenerateTraceID(ctx context.Context, tracer trace.Tracer, method, path string) string {
 	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", method, path))
 	defer span.End()
 
-	rndNum := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000)
-	return fmt.Sprintf("user_%d\n", rndNum)
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return fmt.Sprintf("user_%d", rnd.Intn(100000))
 }
