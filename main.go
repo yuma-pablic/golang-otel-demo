@@ -4,19 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"otel/utils"
-	"time"
+
+	middlewares "otel/middlewares"
 
 	"github.com/exaring/otelpgx"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riandyrn/otelchi"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var db *pgxpool.Pool
@@ -53,13 +52,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			traceID := GenerateTraceID(r.Context(), tracer, r.Method, r.URL.Path)
-			ctx := context.WithValue(r.Context(), TraceIDKey, traceID)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
+	r.Use(middlewares.TraceIDMiddleware(tracer))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -103,12 +96,4 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
-}
-
-func GenerateTraceID(ctx context.Context, tracer trace.Tracer, method, path string) string {
-	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", method, path))
-	defer span.End()
-
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return fmt.Sprintf("user_%d", rnd.Intn(100000))
 }
