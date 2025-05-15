@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"otel/ctxx"
 	log "otel/log"
 	"path/filepath"
 )
@@ -22,15 +21,10 @@ func NewLogger(ctx context.Context, serviceName string) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	traceID := ctxx.GetTraceID(ctx)
 	serviceAttr := []slog.Attr{
 		{
 			Key:   "service_name",
 			Value: slog.StringValue(serviceName),
-		},
-		{
-			Key:   "trace_id",
-			Value: slog.StringValue(traceID),
 		},
 	}
 

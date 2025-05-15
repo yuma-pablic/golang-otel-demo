@@ -3,10 +3,8 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"otel/ctxx"
-	"time"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -25,6 +23,5 @@ func GenerateTraceID(ctx context.Context, tracer trace.Tracer, method, path stri
 	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", method, path))
 	defer span.End()
 
-	trace_id := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return fmt.Sprintf("user_%d", trace_id.Intn(100000))
+	return span.SpanContext().TraceID().String()
 }
