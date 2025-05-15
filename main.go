@@ -29,12 +29,6 @@ const (
 func main() {
 	ctx := context.Background()
 
-	logger, err := utils.NewLogger(serviceName)
-	if err != nil {
-		panic("Logger init failed: " + err.Error())
-	}
-	logger.Info("Logger initialized", slog.String("service", serviceName))
-
 	// トレーサーとトレーサープロバイダ初期化
 	tracer, tp, err := utils.NewTracer(serviceName)
 	if err != nil {
@@ -43,6 +37,12 @@ func main() {
 	defer func() {
 		_ = tp.Shutdown(ctx)
 	}()
+
+	logger, err := utils.NewLogger(ctx, serviceName)
+	if err != nil {
+		panic("Logger init failed: " + err.Error())
+	}
+	logger.Info("Logger initialized", slog.String("service", serviceName))
 
 	// DB接続
 	db, err = initDB(ctx, tp)

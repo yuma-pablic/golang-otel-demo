@@ -1,13 +1,15 @@
 package utils
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"otel/ctxx"
 	log "otel/log"
 	"path/filepath"
 )
 
-func NewLogger(serviceName string) (*slog.Logger, error) {
+func NewLogger(ctx context.Context, serviceName string) (*slog.Logger, error) {
 	logDir := "logs"
 	logPath := filepath.Join(logDir, "app.log")
 
@@ -20,17 +22,23 @@ func NewLogger(serviceName string) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	// 共通属性（service_name）を定義
-	serviceAttr := slog.Attr{
-		Key:   "service_name",
-		Value: slog.StringValue(serviceName),
+	traceID := ctxx.GetTraceID(ctx)
+	serviceAttr := []slog.Attr{
+		{
+			Key:   "service_name",
+			Value: slog.StringValue(serviceName),
+		},
+		{
+			Key:   "trace_id",
+			Value: slog.StringValue(traceID),
+		},
 	}
 
 	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	stdoutHandlerWithAttrs := stdoutHandler.WithAttrs([]slog.Attr{serviceAttr})
+	stdoutHandlerWithAttrs := stdoutHandler.WithAttrs(serviceAttr)
 
 	fileHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo})
-	fileHandlerWithAttrs := fileHandler.WithAttrs([]slog.Attr{serviceAttr})
+	fileHandlerWithAttrs := fileHandler.WithAttrs(serviceAttr)
 
 	baseHandler := log.NewMultiHandler(stdoutHandlerWithAttrs, fileHandlerWithAttrs)
 	traceAwareHandler := &log.TraceHandler{Handler: baseHandler}
