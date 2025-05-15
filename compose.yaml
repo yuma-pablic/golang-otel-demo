@@ -24,6 +24,8 @@ services:
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
       - ./o11y/tempo/tempo.yaml:/etc/tempo/tempo.yaml
+      - tempo_traces:/tmp/tempo/traces
+      - tempo_wal:/tmp/tempo/wal
     ports:
       - "3200:3200"
       - "9096:9096"
@@ -92,5 +94,7 @@ services:
 volumes:
   pgdata:
   grafana_storage:
+  tempo_traces:
+  tempo_wal:
 networks:
   my_network:
