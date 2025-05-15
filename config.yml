@@ -25,13 +25,13 @@ processors:
     actions:
       - action: insert
         key: loki.attribute.labels
-        value: "level,service_name"
+        value: "level,service_name,trace_id"
 
   resource:
     attributes:
       - action: insert
         key: loki.resource.labels
-        value: "level,service_name"
+        value: "level,service_name,trace_id"
 
 exporters:
   otlp:
