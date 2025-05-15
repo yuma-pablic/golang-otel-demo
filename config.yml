@@ -6,13 +6,32 @@ receivers:
       http:
        endpoint: "0.0.0.0:4318"
   filelog:
+    include_file_path: true
     include: [/logs/app.log]
-    start_at: beginning
-
+    operators:
+      - type: json_parser
+        parse_from: body
+        timestamp:
+          parse_from: body.time
+          layout: '%Y-%m-%dT%H:%M:%S.%f%z'
 
 processors:
   batch:
-  resource:
+  transform:
+    error_mode: ignore
+    log_statements:
+    - context: log
+      statements:
+        - set(attributes["my.service"], attributes["attrs"]["tag"])
+  attributes/container_name:
+    actions:
+      - key: attrs
+        action: delete
+  resource/service_name:
+    attributes:
+      - key: service.name
+        action: insert
+        from_attribute: my.service
 
 exporters:
   otlp:
@@ -21,6 +40,8 @@ exporters:
       insecure: true
   otlphttp/logs:
     endpoint: "http://loki:3100/otlp"
+    tls:
+      insecure: true
 
 extensions:
   health_check:
@@ -35,5 +56,5 @@ service:
       exporters: [otlp]
     logs:
       receivers: [filelog]
-      processors: [resource,batch]
+      processors: [transform, attributes/container_name, resource/service_name, batch]
       exporters: [otlphttp/logs]

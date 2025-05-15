@@ -20,21 +20,14 @@ func NewLogger(serviceName string) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	// 共通属性（service_name）を定義
-	serviceAttr := slog.Attr{
-		Key:   "service_name",
-		Value: slog.StringValue(serviceName),
-	}
+	serviceAttr := slog.String("service", serviceName)
 
-	// stdout用ハンドラ（Text形式）に属性追加
 	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	stdoutHandlerWithAttrs := stdoutHandler.WithAttrs([]slog.Attr{serviceAttr})
 
-	// ファイル用ハンドラ（JSON形式）に属性追加
 	fileHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo})
 	fileHandlerWithAttrs := fileHandler.WithAttrs([]slog.Attr{serviceAttr})
 
-	// 両方のハンドラを組み合わせてトレース対応に包む
 	baseHandler := log.NewMultiHandler(stdoutHandlerWithAttrs, fileHandlerWithAttrs)
 	traceAwareHandler := &log.TraceHandler{Handler: baseHandler}
 
