@@ -55,6 +55,10 @@ schema_config:
         prefix: index_
         period: 24h
 
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h
+
 ruler:
   alertmanager_url: http://localhost:9093
 

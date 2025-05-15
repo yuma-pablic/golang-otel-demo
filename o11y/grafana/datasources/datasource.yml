@@ -12,8 +12,8 @@ datasources:
       derivedFields:
       - datasourceUid: Tempo
         matcherRegex: "traceID=(\\w+)"
-        name: TraceID
-        url: 'http://tempo:3200/trace/$${__value.raw}'
+        url: '$${__value.raw}'
+        urlDisplayLabel: 'View Trace'
 
   - name: Tempo
     type: tempo
@@ -27,7 +27,7 @@ datasources:
         spanStartTimeShift: '1h'
         spanEndTimeShift: '-1h'
         tags: [
-            { key: 'main-api'}
+            { key: 'service_name'}
         ]
         filterByTraceID: true
         filterBySpanID: true
