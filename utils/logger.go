@@ -20,7 +20,11 @@ func NewLogger(serviceName string) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	serviceAttr := slog.String("service", serviceName)
+	// 共通属性（service_name）を定義
+	serviceAttr := slog.Attr{
+		Key:   "service_name",
+		Value: slog.StringValue(serviceName),
+	}
 
 	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	stdoutHandlerWithAttrs := stdoutHandler.WithAttrs([]slog.Attr{serviceAttr})

@@ -10,36 +10,24 @@ receivers:
     include: [/logs/app.log]
     operators:
       - type: json_parser
-        parse_from: body
-        timestamp:
-          parse_from: body.time
-          layout: '%Y-%m-%dT%H:%M:%S.%f%z'
+        id: parse_json
+        parse_from: body        # ← body全体をJSONとしてパース
+      - type: time_parser
+        id: parse_time
+        parse_from: attributes.time  # ← "time" は attributes に格納される
+        layout_type: gotime
+        layout: "2006-01-02T15:04:05.000000000Z07:00"
 
 processors:
   batch:
-  transform:
-    error_mode: ignore
-    log_statements:
-    - context: log
-      statements:
-        - set(attributes["my.service"], attributes["attrs"]["tag"])
-  attributes/container_name:
-    actions:
-      - key: attrs
-        action: delete
-  resource/service_name:
-    attributes:
-      - key: service.name
-        action: insert
-        from_attribute: my.service
 
 exporters:
   otlp:
     endpoint: tempo:9096
     tls:
       insecure: true
-  otlphttp/logs:
-    endpoint: "http://loki:3100/otlp"
+  loki:
+    endpoint: "http://localhost:3100/loki/api/v1/push"
     tls:
       insecure: true
 
@@ -56,5 +44,5 @@ service:
       exporters: [otlp]
     logs:
       receivers: [filelog]
-      processors: [transform, attributes/container_name, resource/service_name, batch]
-      exporters: [otlphttp/logs]
+      processors: [batch]
+      exporters: [loki]

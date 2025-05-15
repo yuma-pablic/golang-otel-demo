@@ -30,11 +30,17 @@ limits_config:
     resource_attributes:
       attributes_config:
         - action: index_label
-          attributes:
-            - hostname
-        - action: index_label
-          attributes:
-            - service_name
+          regex: service_name
+    scope_attributes:
+      - action: drop
+        attributes:
+          - method.name
+    log_attributes:
+      - action: structured_metadata
+        attributes:
+          - user.id
+      - action: drop
+        regex: .*
 
 query_range:
   results_cache:

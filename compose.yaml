@@ -41,8 +41,8 @@ services:
       - ./logs:/logs
       - ./config.yml:/etc/otel/config.yml
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     depends_on:
       - tempo
     networks:
