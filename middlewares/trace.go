@@ -31,10 +31,3 @@ func GenerateTraceID(ctx context.Context, tracer trace.Tracer, method, path stri
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return fmt.Sprintf("user_%d", rnd.Intn(100000))
 }
-
-func GetTraceID(ctx context.Context) string {
-	if v, ok := ctx.Value(TraceIDKey).(string); ok {
-		return v
-	}
-	return ""
-}

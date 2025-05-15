@@ -38,14 +38,29 @@ services:
       - "--config"
       - /etc/otel/config.yml
     volumes:
+      - ./logs:/logs
       - ./config.yml:/etc/otel/config.yml
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     depends_on:
       - tempo
     networks:
       - my_network
+  loki:
+    container_name: loki
+    platform: linux/arm64
+    image: grafana/loki:3.4.3
+    command: "-config.file=/etc/loki/loki.yaml"
+    environment:
+      LOG_CLUSTER_DEPTH: '8'
+      LOG_SIM_TH: '0.3'
+    volumes:
+      - ./o11y/loki/loki.yaml:/etc/loki/loki.yaml
+    networks:
+      - my_network
+    ports:
+      - 3100:3100
   grafana:
     image: grafana/grafana-enterprise:11.6.0
     platform: linux/arm64
