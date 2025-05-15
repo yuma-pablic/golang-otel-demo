@@ -12,3 +12,7 @@ func GetTraceID(ctx context.Context) string {
 	}
 	return ""
 }
+
+func SetTraceID(ctx context.Context, traceID string) context.Context {
+	return context.WithValue(ctx, TraceIDKey, traceID)
+}
