@@ -8,18 +8,30 @@ receivers:
   filelog:
     include_file_path: true
     include: [/logs/app.log]
+    start_at: beginning
     operators:
       - type: json_parser
         id: parse_json
-        parse_from: body        # ← body全体をJSONとしてパース
       - type: time_parser
         id: parse_time
-        parse_from: attributes.time  # ← "time" は attributes に格納される
+        parse_from: attributes.time
         layout_type: gotime
-        layout: "2006-01-02T15:04:05.000000000Z07:00"
+        layout: "2006-01-02T15:04:05.999999999Z07:00"
 
 processors:
   batch:
+
+  attributes:
+    actions:
+      - action: insert
+        key: loki.attribute.labels
+        value: "level,service_name"
+
+  resource:
+    attributes:
+      - action: insert
+        key: loki.resource.labels
+        value: "level,service_name"
 
 exporters:
   otlp:
@@ -27,9 +39,16 @@ exporters:
     tls:
       insecure: true
   loki:
-    endpoint: "http://localhost:3100/loki/api/v1/push"
+    endpoint: "http://loki:3100/loki/api/v1/push"
     tls:
       insecure: true
+    default_labels_enabled:
+      exporter: true
+      job: true
+      instance: true
+      level: true
+  debug:
+    verbosity: detailed
 
 extensions:
   health_check:
@@ -44,5 +63,5 @@ service:
       exporters: [otlp]
     logs:
       receivers: [filelog]
-      processors: [batch]
-      exporters: [loki]
+      processors: [batch,resource, attributes]
+      exporters: [loki,debug]

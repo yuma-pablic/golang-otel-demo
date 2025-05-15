@@ -22,15 +22,11 @@ pattern_ingester:
   enabled: true
 
 limits_config:
-  metric_aggregation_enabled: true
-  max_query_lookback: 365d
-  retention_period: 365d
-  allow_structured_metadata: true
   otlp_config:
     resource_attributes:
       attributes_config:
         - action: index_label
-          regex: service_name
+          regex: service.group
     scope_attributes:
       - action: drop
         attributes:
