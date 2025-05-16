@@ -2,66 +2,40 @@ receivers:
   otlp:
     protocols:
       grpc:
-       endpoint: "0.0.0.0:4317"
+        endpoint: "0.0.0.0:4317"
       http:
-       endpoint: "0.0.0.0:4318"
-  filelog:
-    include_file_path: true
-    include: [/logs/app.log]
-    start_at: beginning
-    operators:
-      - type: json_parser
-        id: parse_json
-      - type: time_parser
-        id: parse_time
-        parse_from: attributes.time
-        layout_type: gotime
-        layout: "2006-01-02T15:04:05.999999999Z07:00"
+        endpoint: "0.0.0.0:4318"
 
 processors:
   batch:
 
-  attributes:
-    actions:
-      - action: insert
-        key: loki.attribute.labels
-        value: "level,service_name,trace_id"
-
-  resource:
-    attributes:
-      - action: insert
-        key: loki.resource.labels
-        value: "level,service_name,trace_id"
-
 exporters:
-  otlp:
-    endpoint: tempo:9096
+  otlp/grafana_cloud_traces:
+    endpoint: "${env:GRAFANA_CLOUD_TEMPO_ENDPOINT}"
     tls:
-      insecure: true
-  loki:
-    endpoint: "http://loki:3100/loki/api/v1/push"
-    tls:
-      insecure: true
-    default_labels_enabled:
-      exporter: true
-      job: true
-      instance: true
-      level: true
-  debug:
-    verbosity: detailed
+      insecure: false
+    auth:
+      authenticator: basicauth/grafana_cloud_traces
 
 extensions:
   health_check:
-  pprof:
-  zpages:
+
+  basicauth/grafana_cloud_traces:
+    client_auth:
+      username: "${env:GRAFANA_CLOUD_TEMPO_USERNAME}"
+      password: "${env:GRAFANA_CLOUD_API_KEY}"
+
+connectors:
+  grafanacloud:
+    host_identifiers: ["host.name"]
 
 service:
+  extensions:
+    - health_check
+    - basicauth/grafana_cloud_traces
+
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp]
-    logs:
-      receivers: [filelog]
-      processors: [batch,resource, attributes]
-      exporters: [loki,debug]
+      exporters: [otlp/grafana_cloud_traces]
