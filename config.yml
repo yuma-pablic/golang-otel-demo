@@ -12,6 +12,20 @@ receivers:
     operators:
       - type: json_parser
         id: parse_json
+  hostmetrics:
+    # Optional. Host Metrics Receiver added as an example of Infra Monitoring capabilities of the OpenTelemetry Collector
+    # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver
+    scrapers:
+      load:
+      memory:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'main-api'
+          scrape_interval: 5s
+          scrape_timeout: 4s
+          static_configs:
+            - targets: ['host.docker.internal:8080']
 
 processors:
   batch:
@@ -43,6 +57,19 @@ exporters:
       insecure: false
     auth:
       authenticator: basicauth/grafana_cloud_logs
+  
+  prometheusremotewrite/grafana_cloud_metrics:
+    # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusremotewriteexporter
+    endpoint: "${env:GRAFANA_CLOUD_PROM_URL}"
+    auth:
+      authenticator: basicauth/grafana_cloud_metrics
+    tls:
+      insecure: false
+    add_metric_suffixes: false
+    remote_write_queue:
+      enabled: True
+      queue_size: 100000
+      num_consumers: 50
 
 extensions:
   health_check:
@@ -55,6 +82,10 @@ extensions:
     client_auth:
       username: "${env:GRAFANA_CLOUD_LOKI_USERNAME}"
       password: "${env:GRAFANA_CLOUD_API_KEY}"
+  basicauth/grafana_cloud_metrics:
+    client_auth:
+      username: "${env:GRAFANA_CLOUD_PROM_USERNAME}"
+      password: "${env:GRAFANA_CLOUD_API_KEY}"
 
 connectors:
   grafanacloud:
@@ -65,14 +96,26 @@ service:
     - health_check
     - basicauth/grafana_cloud_traces
     - basicauth/grafana_cloud_logs
+    - basicauth/grafana_cloud_metrics
 
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/grafana_cloud_traces]
+      exporters: [otlp/grafana_cloud_traces,grafanacloud]
 
     logs:
       receivers: [filelog]
       processors: [batch,resource, attributes]
       exporters: [loki/grafana_cloud_logs]
+    
+    metrics:
+      receivers: [hostmetrics,prometheus]
+      processors: [batch]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
+    
+    metrics/grafanacloud:
+      receivers: [grafanacloud]
+      processors: [batch]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
+

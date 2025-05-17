@@ -32,8 +32,6 @@ services:
       - "4318:4318" # OTLP HTTP receiver
     env_file:
       - .env
-    depends_on:
-      - tempo
     networks:
       - my_network
 
