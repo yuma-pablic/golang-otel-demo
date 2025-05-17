@@ -22,7 +22,7 @@ receivers:
     config:
       scrape_configs:
         - job_name: 'main-api'
-          scrape_interval: 5s
+          scrape_interval: 60s
           scrape_timeout: 4s
           static_configs:
             - targets: ['host.docker.internal:8080']
@@ -70,6 +70,8 @@ exporters:
       enabled: True
       queue_size: 100000
       num_consumers: 50
+  debug:
+    verbosity: detailed
 
 extensions:
   health_check:
@@ -112,10 +114,10 @@ service:
     metrics:
       receivers: [hostmetrics,prometheus]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
     
     metrics/grafanacloud:
       receivers: [grafanacloud]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
 

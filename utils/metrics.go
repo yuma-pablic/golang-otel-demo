@@ -6,6 +6,7 @@ import (
 
 type Metrics struct {
 	Requests *prometheus.CounterVec
+	Duration *prometheus.HistogramVec
 }
 
 func NewMetrics() *Metrics {
@@ -17,9 +18,19 @@ func NewMetrics() *Metrics {
 		[]string{"path"},
 	)
 
-	prometheus.MustRegister(requests)
+	duration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of HTTP requests in seconds",
+			Buckets: prometheus.ExponentialBuckets(0.01, 2, 10), // 10バケツ
+		},
+		[]string{"path"},
+	)
+
+	prometheus.MustRegister(requests, duration)
 
 	return &Metrics{
 		Requests: requests,
+		Duration: duration,
 	}
 }
