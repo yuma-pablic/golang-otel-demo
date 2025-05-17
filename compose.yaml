@@ -17,21 +17,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  tempo:
-    image: grafana/tempo:2.1.1
-    platform: linux/arm64
-    container_name: tempo
-    command: ["-config.file=/etc/tempo/tempo.yaml"]
-    volumes:
-      - ./o11y/tempo/tempo.yaml:/etc/tempo/tempo.yaml
-      - tempo_traces:/tmp/tempo/traces
-      - tempo_wal:/tmp/tempo/wal
-    ports:
-      - "3200:3200"
-      - "9096:9096"
-      - "3201:3201"
-    networks:
-      - my_network
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0-arm64
     platform: linux/arm64
@@ -51,52 +36,8 @@ services:
       - tempo
     networks:
       - my_network
-  loki:
-    container_name: loki
-    platform: linux/arm64
-    image: grafana/loki:3.4.3
-    command: "-config.file=/etc/loki/loki.yaml"
-    environment:
-      LOG_CLUSTER_DEPTH: '8'
-      LOG_SIM_TH: '0.3'
-    volumes:
-      - ./o11y/loki/loki.yaml:/etc/loki/loki.yaml
-    networks:
-      - my_network
-    ports:
-      - 3100:3100
-  grafana:
-    image: grafana/grafana-enterprise:11.6.0
-    platform: linux/arm64
-    container_name: grafana
-    ports:
-      - 3000:3000
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_DATABASE_TYPE: postgres
-      GF_DATABASE_HOST: db:5432
-      GF_DATABASE_NAME: postgres
-      GF_DATABASE_USER: admin
-      GF_DATABASE_PASSWORD: admin
-      GF_DATABASE_SSL_MODE: disable
-      GF_INSTALL_PLUGINS: https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app
-    restart: unless-stopped
-    volumes:
-      - 'grafana_storage:/var/lib/grafana'
-      - './o11y/grafana/datasources:/etc/grafana/provisioning/datasources'
-      # - './o11y/grafana/dashboards:/var/lib/grafana/dashboards'
-      # - './o11y/grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml'
-    networks:
-      - my_network
-    depends_on:
-      db:
-        condition: service_healthy
 
 volumes:
   pgdata:
-  grafana_storage:
-  tempo_traces:
-  tempo_wal:
 networks:
   my_network:
