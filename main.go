@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"otel/handler"
 	middlewares "otel/middlewares"
 	"otel/utils"
 
@@ -50,12 +51,17 @@ func main() {
 		log.Fatalf("DB init failed: %v", err)
 	}
 	defer db.Close()
+	metrics := utils.NewMetrics()
 
 	// ルーター設定
 	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 	r.Use(middlewares.TraceIDMiddleware(tracer))
+	r.Use(middlewares.MetricsMiddleware(metrics))
+
+	handler.RegisterMetricsRoute(r)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
