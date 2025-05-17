@@ -17,6 +17,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riandyrn/otelchi"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -63,13 +65,25 @@ func main() {
 	metrics := utils.NewMetrics()
 	logger.Info("Metrics initialized")
 
+	// ===== Histogram（OTel）初期化 =====
+	meter := otel.Meter(serviceName)
+	histogram, err := meter.Float64Histogram(
+		"http_request_duration_seconds",
+		metric.WithDescription("A histogram of the HTTP request durations in seconds."),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		logger.Error("Failed to initialize histogram", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
 	// ===== HTTPルーターとミドルウェア設定 =====
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 	r.Use(middlewares.TraceIDMiddleware(tracer))
-	r.Use(middlewares.MetricsMiddleware(metrics))
+	r.Use(middlewares.MetricsMiddleware(tracer, metrics, histogram))
 
 	// /metrics エンドポイントなどのハンドラ登録
 	handler.RegisterMetricsRoute(r)
