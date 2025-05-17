@@ -30,30 +30,40 @@ const (
 func main() {
 	ctx := context.Background()
 
+	// ===== Logger初期化 =====
 	logger, err := utils.NewLogger(serviceName)
 	if err != nil {
 		panic("Logger init failed: " + err.Error())
 	}
 	logger.Info("Logger initialized", slog.String("service", serviceName))
 
-	// トレーサーとトレーサープロバイダ初期化
+	// ===== Tracer初期化（otel SDK）=====
 	tracer, tp, err := utils.NewTracer(serviceName)
 	if err != nil {
-		log.Fatalf("Tracer init failed: %v", err)
+		logger.Error("Tracer init failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer func() {
-		_ = tp.Shutdown(ctx)
+		if err := tp.Shutdown(ctx); err != nil {
+			logger.Error("Tracer shutdown failed", slog.String("error", err.Error()))
+		}
 	}()
+	logger.Info("Tracer initialized")
 
-	// DB接続
+	// ===== DB接続（otelpgx付き）=====
 	db, err = initDB(ctx, tp)
 	if err != nil {
-		log.Fatalf("DB init failed: %v", err)
+		logger.Error("DB init failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer db.Close()
-	metrics := utils.NewMetrics()
+	logger.Info("DB connected")
 
-	// ルーター設定
+	// ===== Metrics初期化 =====
+	metrics := utils.NewMetrics()
+	logger.Info("Metrics initialized")
+
+	// ===== HTTPルーターとミドルウェア設定 =====
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
@@ -61,6 +71,7 @@ func main() {
 	r.Use(middlewares.TraceIDMiddleware(tracer))
 	r.Use(middlewares.MetricsMiddleware(metrics))
 
+	// /metrics エンドポイントなどのハンドラ登録
 	handler.RegisterMetricsRoute(r)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
