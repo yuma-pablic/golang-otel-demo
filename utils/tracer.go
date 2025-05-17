@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -15,12 +14,17 @@ import (
 )
 
 func NewTracer(svcName string) (trace.Tracer, *sdktrace.TracerProvider, error) {
-	exporter, err := otlptrace.New(
-		context.Background(),
-		otlptracehttp.NewClient(otlptracehttp.WithInsecure()),
+	ctx := context.Background()
+	otelCollectorEndpoint := "0.0.0.0:4317"
+
+	exporter, err := otlptracegrpc.New(
+		ctx,
+		otlptracegrpc.WithEndpoint(otelCollectorEndpoint),
+		otlptracegrpc.WithInsecure(),
 	)
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+		return nil, nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(

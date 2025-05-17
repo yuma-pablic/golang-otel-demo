@@ -29,6 +29,12 @@ const (
 	serviceName = "main-api"
 )
 
+var (
+	meter = otel.Meter("main-api")
+
+	histogram metric.Float64Histogram
+)
+
 func main() {
 	ctx := context.Background()
 
@@ -37,7 +43,6 @@ func main() {
 	if err != nil {
 		panic("Logger init failed: " + err.Error())
 	}
-	logger.Info("Logger initialized", slog.String("service", serviceName))
 
 	// ===== Tracer初期化（otel SDK）=====
 	tracer, tp, err := utils.NewTracer(serviceName)
@@ -50,7 +55,6 @@ func main() {
 			logger.Error("Tracer shutdown failed", slog.String("error", err.Error()))
 		}
 	}()
-	logger.Info("Tracer initialized")
 
 	// ===== DB接続（otelpgx付き）=====
 	db, err = initDB(ctx, tp)
@@ -59,22 +63,23 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	logger.Info("DB connected")
 
 	// ===== Metrics初期化 =====
-	metrics := utils.NewMetrics()
-	logger.Info("Metrics initialized")
+	meterProvider, err := utils.NewMetrics()
+	if err != nil {
+		log.Fatalf("failed to initialize histogram: %v", err)
+	}
+	defer func() { _ = meterProvider.Shutdown(context.Background()) }()
 
 	// ===== Histogram（OTel）初期化 =====
-	meter := otel.Meter(serviceName)
-	histogram, err := meter.Float64Histogram(
+	meter = otel.Meter(serviceName)
+	histogram, err = meter.Float64Histogram(
 		"http_request_duration_seconds",
 		metric.WithDescription("A histogram of the HTTP request durations in seconds."),
 		metric.WithUnit("s"),
 	)
 	if err != nil {
-		logger.Error("Failed to initialize histogram", slog.String("error", err.Error()))
-		os.Exit(1)
+		log.Fatalf("failed to initialize histogram: %v", err)
 	}
 
 	// ===== HTTPルーターとミドルウェア設定 =====
@@ -83,7 +88,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 	r.Use(middlewares.TraceIDMiddleware(tracer))
-	r.Use(middlewares.MetricsMiddleware(tracer, metrics, histogram))
+	r.Use(middlewares.MetricsMiddleware(tracer, histogram))
 
 	// /metrics エンドポイントなどのハンドラ登録
 	handler.RegisterMetricsRoute(r)
