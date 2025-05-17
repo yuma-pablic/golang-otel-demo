@@ -5,9 +5,28 @@ receivers:
         endpoint: "0.0.0.0:4317"
       http:
         endpoint: "0.0.0.0:4318"
+  filelog:
+    include_file_path: true
+    include: [/logs/app.log]
+    start_at: beginning
+    operators:
+      - type: json_parser
+        id: parse_json
 
 processors:
   batch:
+
+  attributes:
+    actions:
+      - action: insert
+        key: loki.attribute.labels
+        value: "level,service_name,trace_id"
+
+  resource:
+    attributes:
+      - action: insert
+        key: loki.resource.labels
+        value: "level,service_name,trace_id"
 
 exporters:
   otlp/grafana_cloud_traces:
@@ -17,12 +36,24 @@ exporters:
     auth:
       authenticator: basicauth/grafana_cloud_traces
 
+  loki/grafana_cloud_logs:
+    # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/lokiexporter
+    endpoint: "${env:GRAFANA_CLOUD_LOKI_URL}"
+    tls:
+      insecure: false
+    auth:
+      authenticator: basicauth/grafana_cloud_logs
+
 extensions:
   health_check:
 
   basicauth/grafana_cloud_traces:
     client_auth:
       username: "${env:GRAFANA_CLOUD_TEMPO_USERNAME}"
+      password: "${env:GRAFANA_CLOUD_API_KEY}"
+  basicauth/grafana_cloud_logs:
+    client_auth:
+      username: "${env:GRAFANA_CLOUD_LOKI_USERNAME}"
       password: "${env:GRAFANA_CLOUD_API_KEY}"
 
 connectors:
@@ -33,9 +64,15 @@ service:
   extensions:
     - health_check
     - basicauth/grafana_cloud_traces
+    - basicauth/grafana_cloud_logs
 
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp/grafana_cloud_traces]
+
+    logs:
+      receivers: [filelog]
+      processors: [batch,resource, attributes]
+      exporters: [loki/grafana_cloud_logs]
