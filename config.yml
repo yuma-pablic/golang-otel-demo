@@ -102,7 +102,7 @@ service:
     logs:
       receivers: [filelog]
       processors: [batch,resource, attributes]
-      exporters: [loki/grafana_cloud_logs]
+      exporters: [loki/grafana_cloud_logs,debug]
     
     metrics:
       receivers: [otlp,hostmetrics]

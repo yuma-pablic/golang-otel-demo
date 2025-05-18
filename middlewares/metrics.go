@@ -26,6 +26,8 @@ func MetricsMiddleware(tracer trace.Tracer, histogram metric.Float64Histogram) f
 				ctx,
 				float64(duration.Seconds()),
 			)
+			next.ServeHTTP(w, r.WithContext(ctx))
+
 		})
 	}
 }
