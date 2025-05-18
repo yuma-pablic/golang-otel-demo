@@ -26,7 +26,6 @@ func MetricsMiddleware(tracer trace.Tracer, histogram metric.Float64Histogram) f
 				ctx,
 				float64(duration.Seconds()),
 			)
-
 		})
 	}
 }

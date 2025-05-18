@@ -27,18 +27,28 @@ func NewTracer(svcName string) (trace.Tracer, *sdktrace.TracerProvider, error) {
 		return nil, nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(svcName),
+		),
+	)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(svcName),
-		)),
+		sdktrace.WithResource(res),
 	)
 
 	otel.SetTracerProvider(tp)
+
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, propagation.Baggage{}))
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 
 	return otel.Tracer(svcName), tp, nil
 }

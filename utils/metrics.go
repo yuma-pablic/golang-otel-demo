@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 func NewMetrics() (*sdkmetric.MeterProvider, error) {
