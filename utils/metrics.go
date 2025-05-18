@@ -23,6 +23,7 @@ func NewMetrics() (*sdkmetric.MeterProvider, error) {
 		otlpmetricgrpc.WithEndpoint(otelCollectorEndpoint),
 		otlpmetricgrpc.WithInsecure(),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metrics exporter: %w", err)
 	}
