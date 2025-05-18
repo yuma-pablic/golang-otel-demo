@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"otel/handler"
 	middlewares "otel/middlewares"
 	"otel/utils"
 
@@ -89,9 +88,6 @@ func main() {
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 	r.Use(middlewares.TraceIDMiddleware(tracer))
 	r.Use(middlewares.MetricsMiddleware(tracer, histogram))
-
-	// /metrics エンドポイントなどのハンドラ登録
-	handler.RegisterMetricsRoute(r)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

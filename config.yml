@@ -97,7 +97,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/grafana_cloud_traces,grafanacloud]
+      exporters: [otlp/grafana_cloud_traces,grafanacloud,debug]
 
     logs:
       receivers: [filelog]
@@ -107,10 +107,10 @@ service:
     metrics:
       receivers: [otlp,hostmetrics]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
     
     metrics/grafanacloud:
       receivers: [grafanacloud]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
 

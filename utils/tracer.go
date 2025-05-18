@@ -17,6 +17,7 @@ func NewTracer(svcName string) (trace.Tracer, *sdktrace.TracerProvider, error) {
 	ctx := context.Background()
 	otelCollectorEndpoint := "0.0.0.0:4317"
 
+	// エクスポーター
 	exporter, err := otlptracegrpc.New(
 		ctx,
 		otlptracegrpc.WithEndpoint(otelCollectorEndpoint),
