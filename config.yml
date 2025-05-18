@@ -18,14 +18,7 @@ receivers:
     scrapers:
       load:
       memory:
-  prometheus:
-    config:
-      scrape_configs:
-        - job_name: 'main-api'
-          scrape_interval: 60s
-          scrape_timeout: 4s
-          static_configs:
-            - targets: ['host.docker.internal:8080']
+
 
 processors:
   batch:
@@ -112,7 +105,7 @@ service:
       exporters: [loki/grafana_cloud_logs]
     
     metrics:
-      receivers: [hostmetrics,prometheus]
+      receivers: [otlp,hostmetrics]
       processors: [batch]
       exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
     
