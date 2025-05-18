@@ -1,42 +1,49 @@
 package utils
 
 import (
+	"context"
 	"log/slog"
 	"os"
+
 	log "otel/log"
-	"path/filepath"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
-func NewLogger(serviceName string) (*slog.Logger, error) {
-	logDir := "logs"
-	logPath := filepath.Join(logDir, "app.log")
+type LoggerProvider struct {
+	base *slog.Logger
+}
 
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return nil, err
+func (p *LoggerProvider) WithTraceContext(ctx context.Context) *slog.Logger {
+	sc := trace.SpanContextFromContext(ctx)
+	if !sc.IsValid() {
+		return p.base
 	}
+	return p.base.With(
+		slog.String("trace_id", sc.TraceID().String()),
+		slog.String("span_id", sc.SpanID().String()),
+	)
+}
 
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	// 共通属性（service_name）を定義
+func NewLoggerProvider(serviceName string) (*LoggerProvider, error) {
+	// 共通属性（service_name）
 	serviceAttr := slog.Attr{
 		Key:   "service_name",
 		Value: slog.StringValue(serviceName),
 	}
 
-	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	stdoutHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
 	stdoutHandlerWithAttrs := stdoutHandler.WithAttrs([]slog.Attr{serviceAttr})
 
-	fileHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo})
-	fileHandlerWithAttrs := fileHandler.WithAttrs([]slog.Attr{serviceAttr})
-
-	baseHandler := log.NewMultiHandler(stdoutHandlerWithAttrs, fileHandlerWithAttrs)
-	traceAwareHandler := &log.TraceHandler{Handler: baseHandler}
+	// Trace対応 + stdoutのみの MultiHandler
+	traceAwareHandler := &log.TraceHandler{
+		Handler: stdoutHandlerWithAttrs,
+	}
 
 	logger := slog.New(traceAwareHandler)
 	slog.SetDefault(logger)
 
-	return logger, nil
+	return &LoggerProvider{base: logger}, nil
 }

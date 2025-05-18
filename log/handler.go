@@ -3,20 +3,27 @@ package log
 import (
 	"context"
 	"log/slog"
-	"otel/ctxx"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
+// TraceHandler: trace_id, span_id を ctx から抽出して付与
 type TraceHandler struct {
 	slog.Handler
 }
 
 func (h *TraceHandler) Handle(ctx context.Context, r slog.Record) error {
-	if traceID := ctxx.GetTraceID(ctx); traceID != "" {
-		r.AddAttrs(slog.String("trace_id", traceID))
+	sc := trace.SpanContextFromContext(ctx)
+	if sc.IsValid() {
+		r.AddAttrs(
+			slog.String("trace_id", sc.TraceID().String()),
+			slog.String("span_id", sc.SpanID().String()),
+		)
 	}
 	return h.Handler.Handle(ctx, r)
 }
 
+// MultiHandler: 複数のハンドラーに同時出力する
 type MultiHandler struct {
 	handlers []slog.Handler
 }

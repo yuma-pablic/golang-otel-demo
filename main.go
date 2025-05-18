@@ -38,10 +38,11 @@ func main() {
 	ctx := context.Background()
 
 	// ===== Logger初期化 =====
-	logger, err := utils.NewLogger(serviceName)
+	lp, err := utils.NewLoggerProvider("main-api")
 	if err != nil {
-		panic("Logger init failed: " + err.Error())
+		panic(err)
 	}
+	logger := lp.WithTraceContext(ctx)
 
 	// ===== Tracer初期化（otel SDK）=====
 	tracer, tp, err := utils.NewTracer(serviceName)
@@ -64,11 +65,11 @@ func main() {
 	defer db.Close()
 
 	// ===== Metrics初期化 =====
-	meterProvider, err := utils.NewMetrics()
+	mp, err := utils.NewMetrics()
 	if err != nil {
 		log.Fatalf("failed to initialize histogram: %v", err)
 	}
-	defer func() { _ = meterProvider.Shutdown(context.Background()) }()
+	defer func() { _ = mp.Shutdown(context.Background()) }()
 
 	// ===== Histogram（OTel）初期化 =====
 	meter = otel.Meter(serviceName)
@@ -98,10 +99,10 @@ func main() {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		slog.InfoContext(ctx, "health_check success")
+		logger.InfoContext(ctx, "health_check success")
 	})
 
-	log.Printf("Starting server on %s...\n", addr)
+	logger.Info("Starting server on %s...")
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
