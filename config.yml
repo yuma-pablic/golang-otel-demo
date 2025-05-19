@@ -10,6 +10,8 @@ receivers:
     include: [/logs/app.log]
     start_at: beginning
     operators:
+      - type: json_parser
+        id: parse_json
       - type: time_parser
         id: parse_time
         parse_from: body.time
