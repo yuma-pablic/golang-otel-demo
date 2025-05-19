@@ -10,8 +10,13 @@ receivers:
     include: [/logs/app.log]
     start_at: beginning
     operators:
-      - type: json_parser
-        id: parse_json
+      - type: time_parser
+        id: parse_time
+        parse_from: body.time
+        layout_type: gotime
+        layout: "2006-01-02T15:04:05.999999999Z07:00"
+
+
   hostmetrics:
     # Optional. Host Metrics Receiver added as an example of Infra Monitoring capabilities of the OpenTelemetry Collector
     # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver
@@ -27,13 +32,13 @@ processors:
     actions:
       - action: insert
         key: loki.attribute.labels
-        value: "level,service_name,trace_id"
+        value: "level,service_name"
 
   resource:
     attributes:
       - action: insert
         key: loki.resource.labels
-        value: "level,service_name,trace_id"
+        value: "level,service_name"
 
 exporters:
   otlp/grafana_cloud_traces:
@@ -107,10 +112,10 @@ service:
     metrics:
       receivers: [otlp,hostmetrics]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
     
     metrics/grafanacloud:
       receivers: [grafanacloud]
       processors: [batch]
-      exporters: [prometheusremotewrite/grafana_cloud_metrics,debug]
+      exporters: [prometheusremotewrite/grafana_cloud_metrics]
 
