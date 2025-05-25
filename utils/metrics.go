@@ -16,7 +16,7 @@ import (
 
 func NewMetrics() (*sdkmetric.MeterProvider, error) {
 	ctx := context.Background()
-	otelCollectorEndpoint := "0.0.0.0:4317"
+	otelCollectorEndpoint := "localhost:4317"
 
 	exporter, err := otlpmetricgrpc.New(
 		ctx,
